@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Bus": {
+      "title": "Bus",
+      "description": "Bus route and schedule information",
+      "type": "object",
+      "properties": {
+        "routeName": { "type": "string" },
+        "busNumber": { "type": "string" },
+        "capacity": { "type": "number" },
+        "bookedSeats": { "type": "number" },
+        "schedule": { "type": "string" },
+        "driverName": { "type": "string" },
+        "price": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["routeName", "busNumber", "capacity", "schedule", "price"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Bus seat booking record",
+      "type": "object",
+      "properties": {
+        "busId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "bookingDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"] },
+        "paymentIntentId": { "type": "string" },
+        "amount": { "type": "number" }
+      },
+      "required": ["busId", "studentId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/buses/{busId}": {
+      "schema": "Bus",
+      "description": "Bus routes and availability"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Seat bookings"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: name (string), email (string), role (string: student|admin)
+    //
+    // Collection: buses
+    // Fields: routeName (string), busNumber (string), capacity (number), 
+    //         bookedSeats (number), schedule (string), driverName (string), 
+    //         price (number), active (bool)
+    //
+    // Collection: bookings
+    // Fields: busId (string), studentId (string), studentName (string), 
+    //         bookingDate (timestamp), status (string: pending|confirmed|cancelled),
+    //         paymentIntentId (string), amount (number)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "joginipellisachith@gmail.com");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['student', 'admin'];
+    }
+
+    function isValidBus(data) {
+      return data.keys().hasAll(['routeName', 'busNumber', 'capacity', 'schedule', 'price']) &&
+             data.routeName is string && data.routeName.size() < 200 &&
+             data.busNumber is string && data.busNumber.size() < 20 &&
+             data.capacity is number && data.capacity > 0 &&
+             data.price is number && data.price >= 0;
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['busId', 'studentId', 'status']) &&
+             data.status in ['pending', 'confirmed', 'cancelled'];
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
+    }
+
+    match /buses/{busId} {
+      allow read: if true; // Publicly viewable routes
+      allow write: if isAdmin() && isValidBus(request.resource.data);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId && isValidBooking(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isAdmin()) && isValidBooking(request.resource.data);
+    }
+  }
+}
